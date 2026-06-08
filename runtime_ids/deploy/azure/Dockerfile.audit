@@ -1,0 +1,13 @@
+# Imagine VERSIONATA pt componenta de audit hibrid v2.2 — COACE codul + modelul + config-ul (nu mai din ConfigMap).
+# Baza runtime-ids are deja xgboost+fastapi+prometheus+uvicorn. GitOps-clean: artefact imuabil, versionat.
+# Build:  docker build -f runtime_ids/deploy/azure/Dockerfile.audit -t andreeagrigore/runtime-ids-audit:2.2 .
+# Push:   docker push andreeagrigore/runtime-ids-audit:2.2
+FROM andreeagrigore/runtime-ids:1.1
+COPY runtime_ids/service/audit_xgb_service.py            /app/xgb/audit_xgb_service.py
+COPY runtime_ids/models/audit_hybrid_v2/classifier.json  /app/xgb/classifier.json
+COPY runtime_ids/models/audit_hybrid_v2/pipeline_config.json /app/xgb/pipeline_config.json
+ENV RUNTIME_IDS_XGB_DIR=/app/xgb \
+    RUNTIME_IDS_XGB_MODEL=/app/xgb/classifier.json \
+    RUNTIME_IDS_HYSTERESIS_K=2
+EXPOSE 8080
+CMD ["python","/app/xgb/audit_xgb_service.py"]

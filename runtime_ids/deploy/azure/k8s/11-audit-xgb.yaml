@@ -1,0 +1,101 @@
+# CANONIC — componenta audit hibrid v2.2: imagine IMUABILA versionata (cod+model+config copt) + hardening COMPLET.
+# O SINGURA cale (rezolva drift-ul: imutabilitate SI hardening impreuna). Pur declarativ: `kubectl apply -f`.
+# Build/push: deploy_audit_hybrid.sh MODE=image (sau Dockerfile.audit). Fallback dev fara registry: 11-audit-xgb-cfgmap-fallback.yaml.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ids-audit-xgb
+  namespace: runtime-ids
+  labels: { app: ids-audit-xgb, component: audit, version: "2.2-hybrid" }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: ids-audit-xgb }
+  template:
+    metadata:
+      labels: { app: ids-audit-xgb, component: audit, version: "2.2-hybrid" }
+    spec:
+      securityContext:                       # pod: ne-root + seccomp
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      affinity:                              # HA REAL: cele 2 replici pe noduri diferite
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels: { app: ids-audit-xgb }
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: audit-xgb
+          # IMUABIL prin DIGEST (@sha256), nu doar tag — imutabilitate REALA runtime (un push peste tag NU poate diverge podurile).
+          # v2.2: 6 reguli (+anom = identitate kube-system necunoscuta) + persist + config v2.2-hybrid (known_allow).
+          image: andreeagrigore/runtime-ids-audit:2.4@sha256:7ed969a203dfeb50fdda16b7f96a9475e13fe5e1e013e8ca6d53dd55124c824a
+          imagePullPolicy: IfNotPresent
+          env:
+            - { name: RUNTIME_IDS_HYSTERESIS_K, value: "2" }
+            - { name: HOME, value: "/tmp" }
+          securityContext:                   # container: hardening complet
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          ports:
+            - { containerPort: 8080, name: http }
+          readinessProbe:
+            httpGet: { path: /readyz, port: 8080 }
+            initialDelaySeconds: 8
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: "1", memory: 1Gi }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ids-service-xgb
+  namespace: runtime-ids
+  labels: { app: ids-audit-xgb }
+spec:
+  selector: { app: ids-audit-xgb }
+  ports:
+    - { port: 8080, targetPort: 8080, name: http }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ids-audit-xgb-pdb
+  namespace: runtime-ids
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: ids-audit-xgb }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ids-audit-xgb-netpol
+  namespace: runtime-ids
+spec:
+  podSelector:
+    matchLabels: { app: ids-audit-xgb }
+  policyTypes: [Ingress]
+  ingress:
+    - from:                                  # STRICT: doar runtime-ids (corelator) + monitoring (Prometheus)
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: runtime-ids }
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: monitoring }
+      ports:
+        - { protocol: TCP, port: 8080 }
