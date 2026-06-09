@@ -3,6 +3,11 @@
 # Prometheus + Alertmanager + MailHog + Grafana. Feed-ul LIVE real = adapter Log Analytics (30-adapter.yaml),
 # aliniat la /predict/raw v2.2 (NU mai e modelul vechi Transformer / inject_demo).
 set -uo pipefail
+# az/kubectl se strică dacă venv-ul Python (detection) e activ pe PATH -> îl neutralizăm pe durata scriptului (subshell):
+if [ -n "${VIRTUAL_ENV:-}" ]; then
+  PATH="$(printf '%s' "$PATH" | tr ':' '\n' | grep -v "^${VIRTUAL_ENV}/bin$" | paste -sd: -)"
+  unset VIRTUAL_ENV PYTHONHOME; export PATH PYTHONNOUSERSITE=1
+fi
 REPO="$(cd "$(dirname "$0")/../../.." && pwd)"
 RID="$REPO/runtime_ids"; K="kubectl"
 GP="$RID/observability/grafana"
