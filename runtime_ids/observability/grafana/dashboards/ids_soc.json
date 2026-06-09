@@ -25,7 +25,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round((sum(increase(audit_xgb_alerts_total[2m])) or vector(0)) + (sum(increase(runtime_ids_flow_alerts_total[2m])) or vector(0)) + (sum(increase(falco_alerts_total[2m])) or vector(0)))"
+          "expr": "round((sum(increase(audit_xgb_alerts_total[2m])) or vector(0)) + (sum(increase(runtime_ids_flow_alerts_total[2m])) or vector(0)))"
         }
       ],
       "options": {
@@ -116,15 +116,6 @@
           },
           "expr": "round(sum(increase(runtime_ids_flow_alerts_total[1m])))",
           "legendFormat": "Flow (XGBoost+AE)"
-        },
-        {
-          "refId": "D",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "round(sum(increase(falco_alerts_total[1m])))",
-          "legendFormat": "Runtime (Falco)"
         }
       ],
       "fieldConfig": {
@@ -164,21 +155,6 @@
                 }
               }
             ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Runtime (Falco)"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "orange"
-                }
-              }
-            ]
           }
         ]
       }
@@ -215,15 +191,6 @@
           },
           "expr": "sum(runtime_ids_flow_alerts_total)",
           "legendFormat": "Flow"
-        },
-        {
-          "refId": "D",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum(falco_alerts_total)",
-          "legendFormat": "Falco"
         }
       ],
       "options": {
@@ -256,7 +223,7 @@
     {
       "id": 4,
       "type": "timeseries",
-      "title": "Predicții pe minut — benign vs atac (Audit + Flow) + atacuri Falco",
+      "title": "Predicții pe minut — benign vs atac (Audit + Flow)",
       "gridPos": {
         "h": 7,
         "w": 16,
@@ -276,15 +243,6 @@
           },
           "expr": "round(sum by (verdict) (increase(audit_xgb_predictions_total[1m]) or increase(runtime_ids_flow_predictions_total[1m])))",
           "legendFormat": "{{verdict}}"
-        },
-        {
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "round(sum(increase(falco_alerts_total[1m])))",
-          "legendFormat": "Falco (atac runtime)"
         }
       ],
       "fieldConfig": {

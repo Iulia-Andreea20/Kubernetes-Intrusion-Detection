@@ -36,15 +36,6 @@
           },
           "expr": "up{job=\"ids-flow\"}",
           "legendFormat": "Flow (XGBoost+AE)"
-        },
-        {
-          "refId": "C",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "up{job=\"falco-exporter\"}",
-          "legendFormat": "Runtime (Falco)"
         }
       ],
       "options": {
@@ -92,7 +83,7 @@
     {
       "id": 2,
       "type": "timeseries",
-      "title": "Throughput total — predicții/min (Audit + Flow) + atacuri Falco",
+      "title": "Throughput total — predicții/min (Audit + Flow)",
       "gridPos": {
         "h": 6,
         "w": 16,
@@ -112,15 +103,6 @@
           },
           "expr": "round(sum by (verdict) (increase(audit_xgb_predictions_total[1m]) or increase(runtime_ids_flow_predictions_total[1m])))",
           "legendFormat": "{{verdict}}"
-        },
-        {
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "round(sum(increase(falco_alerts_total[1m])))",
-          "legendFormat": "Falco (atac runtime)"
         }
       ],
       "fieldConfig": {
@@ -253,72 +235,6 @@
           },
           "expr": "round(sum by (verdict) (increase(runtime_ids_flow_predictions_total[1m])))",
           "legendFormat": "{{verdict}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 25
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "attack"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "red"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "benign"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "green"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": 5,
-      "type": "timeseries",
-      "title": "Throughput Falco — alerte runtime/min (pe prioritate)",
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 14
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "round(sum by (priority) (increase(falco_alerts_total[1m])))",
-          "legendFormat": "{{priority}}"
         }
       ],
       "fieldConfig": {

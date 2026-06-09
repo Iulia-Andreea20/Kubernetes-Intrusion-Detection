@@ -52,9 +52,8 @@ phase_attack(){ hr "FAZA 5 — ATAC LIVE -> ADAPTER -> ALERTĂ (end-to-end pe cl
   bash "$COLLECT/attack_compromised_allowlist.sh" || true
   echo ">> ONEST: alerta apare după lag-ul de ingestie Log Analytics (~minute). Urmărește în Grafana (panel audit_xgb_alerts_total)."; }
 
-phase_status(){ hr "STARE LIVE (cluster managed) — cele 3 componente defense-in-depth"
+phase_status(){ hr "STARE LIVE (cluster managed) — componente: Audit (control-plane) + Flow (rețea)"
   kubectl get pods -n $NS -o wide 2>/dev/null | grep -E "audit|adapter|flow|grafana|prometheus" || echo "(cluster inaccesibil / oprit)"
-  echo ">> Falco (componenta RUNTIME, ns 'falco'):"; kubectl get pods -n falco -o wide 2>/dev/null | grep -E "falco|NAME" || echo "   (Falco neinstalat — rulează deploy_obs_aks.sh sau setup_falco.sh)"
   echo ""; echo ">> imagine audit (digest-pinned?):"
   kubectl get deploy ids-audit-xgb -n $NS -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}' 2>/dev/null || true
   POD=$(kubectl get pod -n $NS -l app=ids-audit-xgb -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
