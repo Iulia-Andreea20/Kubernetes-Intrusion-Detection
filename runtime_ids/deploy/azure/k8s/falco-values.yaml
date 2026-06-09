@@ -1,0 +1,20 @@
+# Falco — senzor de runtime (eBPF) pentru componenta de CONTAINER a IDS-ului.
+# Values versionate (IaC reproductibil) folosite de setup_falco.sh / deploy_aks.sh.
+# Falco emite alertele JSON prin http_output către falco-exporter (Prometheus bridge).
+driver:
+  kind: kmod                 # modul de kernel (dkms). modern_ebpf e RESPINS de verificator pe kernelul nod AKS
+                             # 5.15.0-1111-azure; kmod se compilează+încarcă via falco-driver-loader (init). Verificat că se încarcă.
+tty: true
+falcosidekick:
+  enabled: false             # nu folosim sidekick; ieșirea merge direct la exporter-ul nostru
+collectors:
+  kubernetes:
+    enabled: true            # context K8s (pod/namespace) în output_fields
+falco:
+  json_output: true
+  json_include_output_property: true
+  log_level: info
+  http_output:
+    enabled: true
+    # exporter-ul rulează în namespace-ul runtime-ids (cross-namespace -> FQDN)
+    url: "http://falco-exporter.runtime-ids.svc.cluster.local:9093/falco"
