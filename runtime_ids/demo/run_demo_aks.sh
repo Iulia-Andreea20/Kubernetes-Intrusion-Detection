@@ -45,11 +45,12 @@ phase_train(){ hr "FAZA 4 — REPRODUCE TABELUL Wilson (train_v2.py, DETERMINIST
   ( cd "$REPO" && source detection/bin/activate 2>/dev/null; cd "$COLLECT" && python train_v2.py ) | tail -24; }
 
 phase_attack(){ hr "FAZA 5 — ATAC LIVE -> ADAPTER -> ALERTĂ (end-to-end pe cluster)"
+  phase_ui   # deschide Grafana + MailHog ÎNAINTE de demonstrație (ca să vezi alertele live)
   echo "Lansează atacuri reale kubectl; adapterul (30-adapter.yaml) le citește din Log Analytics și POST /predict/raw -> alertă."
   echo ">> log-uri adapter (urmărește 'ids_alert' cu reasons):"
   echo "   kubectl -n $NS logs -l app=ids-audit-adapter -f"
   bash "$COLLECT/attack_compromised_allowlist.sh" || true
-  echo ">> ONEST: alerta apare după lag-ul de ingestie Log Analytics (~minute). Urmărește în Grafana / logs adapter."; }
+  echo ">> ONEST: alerta apare după lag-ul de ingestie Log Analytics (~minute). Urmărește în Grafana (panel audit_xgb_alerts_total)."; }
 
 phase_status(){ hr "STARE LIVE (cluster managed)"
   kubectl get pods -n $NS -o wide 2>/dev/null | grep -E "audit|adapter|flow|grafana|prometheus" || echo "(cluster inaccesibil / oprit)"
@@ -58,11 +59,22 @@ phase_status(){ hr "STARE LIVE (cluster managed)"
   POD=$(kubectl get pod -n $NS -l app=ids-audit-xgb -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
   [ -n "${POD:-}" ] && kubectl exec -n $NS "$POD" -- python -c "import urllib.request,json;print('healthz:',json.load(urllib.request.urlopen('http://localhost:8080/healthz')))" 2>/dev/null || true; }
 
-phase_grafana(){ hr "GRAFANA (SOC dashboard)"; echo "http://localhost:3000 (admin/admin) — panel: audit_xgb_alerts_total{rule}"
-  kubectl -n $NS port-forward svc/grafana 3000:3000; }
+phase_ui(){ hr "UI: deschid Grafana + MailHog (port-forward în FUNDAL + browser)"
+  # idempotent: omoară orice port-forward vechi pe 3000/8025 (evită 'address already in use')
+  pkill -f "port-forward.*svc/grafana 3000:3000" 2>/dev/null || true
+  pkill -f "port-forward.*svc/mailhog 8025:8025" 2>/dev/null || true
+  kubectl -n $NS rollout status deploy/grafana --timeout=90s >/dev/null 2>&1 || true
+  nohup kubectl -n $NS port-forward svc/grafana 3000:3000 >/tmp/pf-grafana.log 2>&1 &
+  nohup kubectl -n $NS port-forward svc/mailhog 8025:8025 >/tmp/pf-mailhog.log 2>&1 &
+  sleep 4   # lasă tunelurile să se stabilească
+  echo "  Grafana → http://localhost:3000  (admin/admin) — SOC: audit_xgb_alerts_total{rule}"
+  echo "  MailHog → http://localhost:8025"
+  if command -v open >/dev/null 2>&1; then open http://localhost:3000 2>/dev/null || true; open http://localhost:8025 2>/dev/null || true; fi
+  echo "  (oprire tuneluri: pkill -f 'port-forward.*svc/(grafana 3000|mailhog 8025)')"; }
 
 [ $# -eq 0 ] && { phase_status; phase_train; exit 0; }
 for arg in "$@"; do case $arg in
   --provision) phase_provision;; --deploy) phase_deploy;; --dataset) phase_dataset;;
-  --train) phase_train;; --attack) phase_attack;; --status) phase_status;; --grafana) phase_grafana;;
+  --train) phase_train;; --attack) phase_attack;; --status) phase_status;;
+  --ui|--grafana) phase_ui;;
   *) echo "argument necunoscut: $arg"; exit 1;; esac; done

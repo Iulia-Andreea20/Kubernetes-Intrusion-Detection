@@ -52,10 +52,18 @@ $K -n runtime-ids rollout status deploy/ids-audit-xgb --timeout=300s || true
 echo ""
 $K -n runtime-ids get pods -o wide
 echo ""
+# --- deschide AUTOMAT UI-urile (port-forward în FUNDAL + browser) ca demonstrația să fie gata ---
+echo ">> deschid Grafana + MailHog (port-forward în fundal)..."
+pkill -f "port-forward.*svc/grafana 3000:3000" 2>/dev/null || true
+pkill -f "port-forward.*svc/mailhog 8025:8025" 2>/dev/null || true
+$K -n runtime-ids rollout status deploy/grafana --timeout=90s >/dev/null 2>&1 || true
+nohup $K -n runtime-ids port-forward svc/grafana 3000:3000 >/tmp/pf-grafana.log 2>&1 &
+nohup $K -n runtime-ids port-forward svc/mailhog 8025:8025 >/tmp/pf-mailhog.log 2>&1 &
+sleep 4
+if command -v open >/dev/null 2>&1; then open http://localhost:3000 2>/dev/null || true; open http://localhost:8025 2>/dev/null || true; fi
 echo "=================================================================="
-echo " Acces UI (terminale separate):"
-echo "   kubectl -n runtime-ids port-forward svc/grafana 3000:3000"
-echo "   kubectl -n runtime-ids port-forward svc/mailhog 8025:8025"
-echo " Apoi: http://localhost:3000 (admin/admin) · http://localhost:8025"
+echo " UI DESCHISE (port-forward în fundal):"
+echo "   Grafana → http://localhost:3000 (admin/admin) · MailHog → http://localhost:8025"
 echo " Dashboard SOC: alerte pe audit_xgb_alerts_total{rule=...} (clasif/F/recon/destruct/hijack/persist/anom)"
+echo " Oprire tuneluri: pkill -f 'port-forward.*svc/(grafana 3000|mailhog 8025)'"
 echo "=================================================================="
