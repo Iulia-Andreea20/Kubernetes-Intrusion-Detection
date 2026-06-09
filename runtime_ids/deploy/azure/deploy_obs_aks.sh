@@ -13,10 +13,10 @@ RID="$REPO/runtime_ids"; K="kubectl"
 GP="$RID/observability/grafana"
 HERE="$RID/deploy/azure"
 
-echo ">> [1/4] namespace"
+echo ">> [1/6] namespace"
 $K apply -f "$RID/deploy/k8s/00-namespace.yaml"
 
-echo ">> [2/4] ConfigMaps Grafana (datasource + dashboards SOC/MLOps)"
+echo ">> [2/6] ConfigMaps Grafana (datasource + dashboards SOC/MLOps)"
 $K -n runtime-ids create configmap grafana-datasource \
   --from-file="$GP/provisioning/datasources/datasource.yml" --dry-run=client -o yaml | $K apply -f -
 $K -n runtime-ids create configmap grafana-provider \
@@ -25,14 +25,21 @@ $K -n runtime-ids create configmap grafana-dashboards \
   --from-file="$GP/dashboards/ids_soc.json" --from-file="$GP/dashboards/ids_mlops.json" \
   --dry-run=client -o yaml | $K apply -f -
 
-echo ">> [3/5] IDS v2.2: audit HIBRID (imagine imuabilă digest-pinned) + flow + observability"
+echo ">> [3/6] IDS v2.2: audit HIBRID (imagine imuabilă digest-pinned) + flow + observability"
 $K apply -f "$HERE/k8s/11-audit-xgb.yaml" -f "$HERE/k8s/20-flow.yaml"
 $K apply -f "$RID/deploy/k8s/40-prometheus.yaml" \
          -f "$RID/deploy/k8s/50-alertmanager.yaml" \
          -f "$RID/deploy/k8s/60-mailhog.yaml" \
          -f "$RID/deploy/k8s/70-grafana.yaml"
 
-echo ">> [4/5] feed LIVE: adapter Log Analytics → /predict/raw (necesită env.generated de la setup_aks.sh)"
+echo ">> [4/6] Falco — a 3-a componentă (RUNTIME/eBPF): DaemonSet + exporter Prometheus (defense-in-depth complet)"
+if command -v helm >/dev/null 2>&1; then
+  bash "$HERE/setup_falco.sh" || echo "   (Falco a eșuat — restul componentelor continuă; verifică: kubectl -n falco get pods)"
+else
+  echo "   (helm lipsește → Falco sărit. Instalează 'brew install helm' apoi rulează: bash $HERE/setup_falco.sh)"
+fi
+
+echo ">> [5/6] feed LIVE: adapter Log Analytics → /predict/raw (necesită env.generated de la setup_aks.sh)"
 if [ -f "$HERE/env.generated" ]; then
   set -a; . "$HERE/env.generated"; set +a
   $K -n runtime-ids create configmap ids-azure-config \
@@ -47,7 +54,7 @@ else
   echo "   (env.generated lipsește → adapter LIVE sărit. Rulează setup_aks.sh întâi, SAU testează serviciul direct: POST /predict/raw)"
 fi
 
-echo ">> [5/5] aștept serviciul Audit v2.2 (ids-audit-xgb)..."
+echo ">> [6/6] aștept serviciul Audit v2.2 (ids-audit-xgb)..."
 $K -n runtime-ids rollout status deploy/ids-audit-xgb --timeout=300s || true
 echo ""
 $K -n runtime-ids get pods -o wide
