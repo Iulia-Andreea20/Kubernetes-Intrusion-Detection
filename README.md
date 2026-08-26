@@ -174,8 +174,8 @@ Some things the collection had to get right, each learned the hard way:
   sessions; counting session × identity pairs inflated N, and a Wilson bound assumes independent
   trials.
 
-The full datasheet (Gebru format, with per-version changelog) and the MITRE technique mapping are in
-[docs/dataset/](docs/dataset/) — both still in Romanian, as thesis deliverables.
+The full datasheet, in Gebru format with a per-version changelog, is at
+[docs/dataset/DATASHEET.md](docs/dataset/DATASHEET.md) — still in Romanian, as a thesis deliverable.
 
 ---
 
@@ -205,7 +205,7 @@ src/
   observability/      Prometheus, Alertmanager, Grafana, MailHog
   demo/               end-to-end walkthrough
 
-docs/                 report material, figures, tables, the datasheet, reference papers
+docs/                 figures, results, the datasheet, reference papers
 releases/             frozen deliverable snapshots
 archive/              earlier generations of the project (see below)
 data/                 datasets, trained models, captures - not in git
@@ -284,7 +284,7 @@ kube-system identity). The rules existed because the classifier failed cleanly o
 never seen: on Stratus persistence the classifier caught 11% of episodes and the
 dedicated rule caught 89%. They were removed in v2.6 in
 favour of a single auditable model with a stated scope. `train_v2.py` still evaluates them, so the
-trade-off can be read off directly; `archive/notes/` holds the status documents from that period.
+trade-off can be read off directly.
 
 ---
 
