@@ -1,0 +1,44 @@
+# Streamer AUDIT — DaemonSet pe nodul control-plane: tailuiește audit log-ul real
+# al API-server-ului și postează ferestrele de tokeni la serviciul Audit.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ids-streamer
+  namespace: runtime-ids
+  labels: { app: ids-streamer, component: audit }
+spec:
+  selector:
+    matchLabels: { app: ids-streamer }
+  template:
+    metadata:
+      labels: { app: ids-streamer, component: audit }
+    spec:
+      # rulează pe control-plane (acolo e audit log-ul)
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: streamer
+          image: runtime-ids:1.0
+          imagePullPolicy: IfNotPresent
+          workingDir: /app
+          command: ["python", "src/service/streamer/audit_streamer.py"]
+          env:
+            - { name: RUNTIME_IDS_AUDIT_LOG, value: /var/log/kubernetes/audit/audit.log }
+            - { name: RUNTIME_IDS_SERVICE_URL, value: http://ids-service:8080 }
+            - { name: RUNTIME_IDS_STREAMER_METRICS_PORT, value: "9100" }
+          ports:
+            - { containerPort: 9100, name: metrics }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          volumeMounts:
+            - name: audit-log
+              mountPath: /var/log/kubernetes/audit
+              readOnly: true
+      volumes:
+        - name: audit-log
+          hostPath:
+            path: /var/log/kubernetes/audit
+            type: DirectoryOrCreate

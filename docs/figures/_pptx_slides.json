@@ -1,0 +1,141 @@
+[
+  {
+    "number": 1,
+    "title": "Sistem IDS multi-componentă pentru Kubernetes",
+    "subtitle": "Apărare în adâncime pe trafic, audit API și runtime — sesiunea iunie 2026",
+    "bullets": [
+      "Autoare: Iulia-Andreea Grigore — coordonator: [nume]",
+      "Două rapoarte: R3 arhitectură + Componenta Flow, R4 Audit + Correlator + deploy",
+      "Contribuție centrală: triangulare Arp 2022 + două fix-uri metodologice originale",
+      "Cluster real AKS, dataset Audit propriu, cod și Helm charts reproductibile",
+      "Aliniat NIST SP 800-190 și NSA/CISA Kubernetes Hardening v1.2"
+    ],
+    "speakerNotes": "Bună ziua, mă numesc Iulia-Andreea Grigore și vă prezint o arhitectură IDS multi-componentă defense-in-depth pentru Kubernetes. Lucrarea acoperă Raportul 3 — arhitectura și Componenta Flow în adâncime — și Raportul 4 — Componenta Audit, Alert Correlator-ul și sistemul livrabil. În următoarele 10 minute voi argumenta de ce un detector single-source este structural insuficient pe Kubernetes și voi prezenta atât rezultatele cantitative, cât și contribuțiile metodologice originale. Totul este validat pe cluster real AKS, cu cod și date reproductibile."
+  },
+  {
+    "number": 2,
+    "title": "Problema: trei suprafețe disjuncte, niciun sensor unic",
+    "subtitle": "Blind spots structurale la IDS single-source pe Kubernetes",
+    "bullets": [
+      "Rețea (L3/L4): vede DDoS și scanări, nu RBAC sau secrete",
+      "Audit API: vede control plane, nu pachete sau syscalls",
+      "Syscalls (kernel): vede container escape, nu intenția API",
+      "Datasets clasice (CIC-IDS) nu reflectă topologia cloud-native",
+      "Arp et al. 2022 (USENIX Sec): multe rezultate publicate sunt optimist-biased",
+      "Soluția standard SIEM industrial: specializare per strat"
+    ],
+    "speakerNotes": "Pornesc de la o constatare structurală: Kubernetes are trei planuri de telemetrie complet disjuncte. Un IDS de flow nu vede niciodată o escaladare RBAC; un IDS de audit nu vede niciodată un DDoS volumetric; un IDS de syscall nu vede niciodată intenția API. Argumentul central este că răspunsul corect este arhitectural — componente paralele specializate, unite de un correlator — nu un model unic, mai mare, omniscient. Arp et al. la USENIX Security 2022 arată în plus că multe rezultate publicate sunt optimist-biased din cauza unor pitfalls metodologice (§3.4 Spurious Correlations, §3.5 False Causality) pe care lucrarea mea le abordează explicit pe Audit."
+  },
+  {
+    "number": 3,
+    "title": "Arhitectura: trei detectoare paralele + un dirijor",
+    "subtitle": "Analogie firewall stratificat — fiecare strat vede ce alții nu pot",
+    "bullets": [
+      "Componenta Flow: XGBoost + Autoencoder hibrid pe trafic L3/L4 (R3)",
+      "Componenta Audit: Transformer LogBERT-style pe secvențe API audit (R4)",
+      "Componenta Syscall (Falco/eBPF): respinsă pe kernel AKS 5.15-azure — future work",
+      "Alert Correlator: pipeline 5 niveluri, threshold → Platt → MITRE chains",
+      "Observabilitate: Prometheus + Loki + Grafana via Helm",
+      "Aliniat NIST SP 800-190, NSA/CISA Hardening v1.2, MITRE D3FEND/ATT&CK Containers"
+    ],
+    "speakerNotes": "Imaginați-vă un firewall pe trei straturi: rețeaua, ușa de la intrare, camerele interioare. Componenta Flow ascultă rețeaua, Componenta Audit urmărește jurnalul API, Componenta Syscall ar urmări kernelul — dar pe kernelul AKS 5.15-azure modern_ebpf este respins de verificator, iar kmod-ul produce zero alerte, deci o raportez onest ca future work. Dirijorul, Alert Correlator-ul, grupează alertele în incidente coerente. Această stratificare nu e arbitrară: corespunde direct mandatului NIST SP 800-190 și ghidului NSA/CISA Kubernetes Hardening v1.2, care cer explicit layering pe rețea, API și host."
+  },
+  {
+    "number": 4,
+    "title": "Componenta Flow — datasets și hibrid XGB+AE",
+    "subtitle": "BCCC Cloud DDoS 2024 + ITU 2023 + CSE-CIC-IDS 2018",
+    "bullets": [
+      "BCCC 2024 (Shafi et al.): ~700k flow-uri, 317 features, 17 atacuri TCP — set principal",
+      "ITU 2023 (Sever & Dogan) + CSE-CIC-IDS 2018: comparativ pentru holdout structural",
+      "XGBoost (Grinsztajn NeurIPS 2022): tree-based bate deep tabular pe NetFlow",
+      "Autoencoder ~90k parametri pe benign-only (Sommer & Paxson 2010, Kitsune Mirsky 2018)",
+      "Fuziune Platt-calibrată score_mean: probabilități comparabile, fără double counting",
+      "Loader unic dataset-agnostic: drop IP/port/timestamp anti signature coupling"
+    ],
+    "speakerNotes": "Componenta Flow combină un XGBoost supervised antrenat pe semnături DDoS din BCCC (615k rânduri din 3 zile, ziua a 4-a Tuesday 19 dec 2023 ținută complet held-out) cu un Autoencoder mic antrenat doar pe trafic benign. Alegerea XGBoost este motivată empiric de Grinsztajn et al. NeurIPS 2022, care pe 45 de benchmark-uri tabulare arată că tree-based bate consecvent deep tabular — exact regimul NetFlow. Autoencoder-ul vine din linia Sommer & Paxson 2010 (IEEE S&P) și Kitsune Mirsky 2018 (NDSS): ML funcționează cel mai bine când învățăm normalul. Cele trei seturi trec prin același loader, deci cifrele comparative reflectă proprietăți reale ale datelor, nu artefacte de implementare."
+  },
+  {
+    "number": 5,
+    "title": "Trei pattern-uri de generalizare — contribuția centrală R3",
+    "subtitle": "Triangulare empirică mapată pe taxonomia Arp et al. USENIX Sec 2022",
+    "bullets": [
+      "BCCC held-out Tuesday (bias temporal): recall 0.775, ROC-AUC 0.953 — robust",
+      "CSE-CIC-IDS 2018 cross-attack (bias spațial): recall 0.286, ROC-AUC 0.819 — parțial",
+      "ITU leave-heavy-hitter-out (bias sampling): recall 0.048 — signature coupling catastrofal",
+      "AE singur pe ITU LHO: ROC-AUC 0.887 — backstop validat empiric (Sommer-Paxson)",
+      "Fuziune score_mean Platt: +2.1 pp recall@FPR=1% (0.782 → 0.803) pe BCCC held-out",
+      "max_calibrated OR respins: FPR@recall=95% urcă ~5× (0.171 → 0.923)"
+    ],
+    "speakerNotes": "Acesta este pilonul empiric al lucrării. Folosind același XGBoost și aceeași metodologie, am evaluat pe trei seturi cu trei protocoale de holdout structural distincte și am obținut trei moduri de eșec radical diferite, care se mapează exact pe taxonomia bias-urilor din Arp et al. 2022 §3.2-3.5 — spațial, temporal și de sampling. Concluzia nu este negativă, ci arhitecturală: niciun model flow singur nu poate acoperi toate trei dimensiunile, deci răspunsul este multi-componentă. Autoencoder-ul recuperează catastrofic la ITU LHO (ROC-AUC 0.887 vs XGBoost 0.639) exact unde XGBoost cedează, validând empiric Sommer & Paxson. Fuziunea aduce un câștig mic dar real și defensabil, iar OR-ul naiv amplifică FPR de aproape 5× — exact ce prezice teoria."
+  },
+  {
+    "number": 6,
+    "title": "Componenta Audit — dataset MITRE propriu + Transformer F1 0.934",
+    "subtitle": "6 scenarii ATT&CK for Containers, fix trivialitate + script-memorization",
+    "bullets": [
+      "Dataset propriu pe AKS real: 40 runde, 7.396 evenimente, ~23% atac, vocab 119 tokens, 77 features tabulare",
+      "Scenarii MITRE: T1613 recon, T1609 exec, T1078 RBAC, T1552 secrete, T1528 SA token, T1610 pod",
+      "Fix trivialitate (Arp §3.5 False Causality): benign_admin_round cu exec/RBAC/secrete legitime",
+      "Fix script-memorization (Arp §3.4 Spurious Correlations): randomizare apeluri, ordine, ținte, jitter",
+      "Transformer LogBERT-style (Guo IJCNN 2021) câștigă: F1 0.934, ROC-AUC 0.993, FPR 3%",
+      "Operating point deploy: recall@FPR=1% = 0.877, FPR@recall=95% = 2.9%"
+    ],
+    "speakerNotes": "Nu există dataset public de calitate cu evenimente audit Kubernetes etichetate, așa că am construit unul pe un cluster AKS real, cu 6 scenarii mapate pe matricea MITRE ATT&CK for Containers. Contribuția metodologică originală este aici: aplicând checklist-ul Arp et al. 2022 am descoperit și reparat două pitfalls care ar fi invalidat rezultatele. Trivialitatea (§3.5) — modelul învățase regula 'exec egal atac' pentru că benign-ul nu conținea exec — am reparat-o adăugând benign_admin_round cu exec, RBAC și secrete legitime. Script-memorization (§3.4) — recall artificial 100% pentru că atacurile erau scripturi identice — am reparat-o prin randomizarea apelurilor, ordinii, țintelor și jitter. Transformer-ul LogBERT-style (Guo et al. IJCNN 2021) câștigă cu F1 0.934, în special pe container_exec unde structura de rafală beneficiază de modelarea secvențială."
+  },
+  {
+    "number": 7,
+    "title": "Alert Correlator — 3.330 alerte → 5 incidente",
+    "subtitle": "5 niveluri, 99.85% dedup, 100% precision, lanțuri MITRE kill-chain",
+    "bullets": [
+      "Pipeline: threshold (FPR=1%) → Platt → corelare 60s pe actor → MITRE chain → severity",
+      "Lanțuri MITRE (6 chains): full_kill_chain 3.0×, recon_to_escape 2.0×, credential_to_escalation 1.8×",
+      "Stream Audit live: 3.330 alerte brute → 5 incidente (dedup 99.85%)",
+      "Precision incident 100%, recall actor 100%, 3/5 incidente cu chain matched",
+      "Acoperire: 6/6 tipuri atac, severități 3 CRITICAL + 2 HIGH",
+      "Data-source agnostic: aceeași logică pentru fuziune live Flow × Audit"
+    ],
+    "speakerNotes": "Alert Correlator-ul nu este un al treilea model ML, ci un mediator de decizii care urmează arhitectura clasică Valeur, Vigna, Kruegel (IEEE TDSC 2004) simplificată pragmatic. Analogie utilă: un dispecer de urgențe care unește mai multe apeluri din aceeași stradă într-un singur incident. Primul nivel taie scoruri sub pragul FPR=1%, al doilea le aduce pe scară comună prin Platt, al treilea grupează pe actor în ferestre de 60 de secunde, al patrulea verifică dacă secvența matchează unul din 6 lanțuri MITRE predefinite, al cincilea atribuie severitate gradată LOW/MEDIUM/HIGH/CRITICAL. Rezultatul pe stream Audit live: 3.330 alerte brute reduse la 5 incidente cu precision perfectă — exact comportamentul dorit pentru un SOC, unde alert fatigue este problema reală."
+  },
+  {
+    "number": 8,
+    "title": "Sistemul livrabil — pod-uri reale + observabilitate",
+    "subtitle": "FastAPI non-root + DaemonSet streamer + Prometheus/Loki/Grafana via Helm",
+    "bullets": [
+      "Flow IDS + Audit IDS: pod-uri FastAPI non-root, /predict /healthz /readyz /metrics",
+      "Audit streamer DaemonSet: tail hostPath audit.log, ferestre 20 tokens/actor",
+      "Stack observabilitate: kube-prometheus-stack + loki-stack instalate via Helm",
+      "Dashboards Grafana: rate alerte/severitate, latency P50/P95, MITRE coverage",
+      "Alerting nativ Grafana → email (MailHog în dev, dedup la nivel incident)",
+      "Deploy: kind local pentru iterare + AKS real pentru generare dataset și validare live"
+    ],
+    "speakerNotes": "Sistemul nu rămâne pe hârtie: cele două componente rulează ca pod-uri FastAPI non-root cu endpoint-uri standard de readiness, liveness și metrics Prometheus. Audit log-ul este consumat de un DaemonSet pe nodul de control-plane care tail-uiește fișierul hostPath, agregheză tokens per actor pe ferestre de 20 și POSTează la serviciul de inferență. Stack-ul de observabilitate este standard — kube-prometheus-stack plus loki-stack via Helm — cu dashboard-uri Grafana pentru rata de alerte per severitate, latențe și acoperire MITRE. Alertele pleacă pe email direct din Grafana. Cluster-ul AKS a fost folosit atât pentru generarea dataset-ului Audit, cât și pentru validarea live a stream-ului. Dacă timpul permite în Q&A pot demara un demo live cu scenariu de atac end-to-end."
+  },
+  {
+    "number": 9,
+    "title": "Concluzii — R3 și R4 împreună",
+    "subtitle": "Ce am demonstrat și de ce contează arhitectural",
+    "bullets": [
+      "R3: 3 pattern-uri Arp 2022 — temporal robust (0.775), spațial parțial (0.286), sampling catastrofal (0.048)",
+      "R3: hibridul XGB+AE aduce +2.1 pp recall@FPR=1% fără cost FPR pe BCCC held-out",
+      "R4: dataset Audit propriu + 2 fix-uri metodologice originale (trivialitate Arp §3.5 + scripts §3.4)",
+      "R4: Transformer LogBERT-style F1 0.934, ROC-AUC 0.993 pe 6 scenarii MITRE realiste",
+      "Correlator: 99.85% dedup, 100% precision pe incidente — alert fatigue rezolvat",
+      "Defense-in-depth = răspunsul corect, nu un model mai mare"
+    ],
+    "speakerNotes": "Pe scurt, contribuțiile sunt patru. Pe Raportul 3 am dovedit empiric prin trei pattern-uri de generalizare unde modelul de flow ține și unde nu, iar fuziunea XGBoost plus Autoencoder aduce un câștig mic dar real și defensabil. Pe Raportul 4 am construit un dataset propriu cu două fix-uri metodologice originale aliniate Arp et al. 2022, iar Transformer-ul atinge F1 0.934 pe scenarii MITRE realiste. Correlator-ul livrează 100% precision la nivel de incident, rezolvând problema reală de alert fatigue. Argumentul final este arhitectural: răspunsul la blind spots pe Kubernetes nu este un model omniscient, ci defense-in-depth multi-componentă aliniat NIST SP 800-190 și NSA/CISA Kubernetes Hardening v1.2."
+  },
+  {
+    "number": 10,
+    "title": "Limitări oneste, future work, Q&A",
+    "subtitle": "Ce nu am rezolvat — și de ce contează că recunosc",
+    "bullets": [
+      "Limită 1: signature coupling pe ITU LHO confirmă Componenta Flow ≠ detector universal",
+      "Limită 2: class balance dataset Audit ~23% atac nereal pentru producție — recalibrare necesară",
+      "Limită 3: Componenta Syscall (Falco/eBPF) respinsă pe kernel AKS 5.15-azure (modern_ebpf verificator, kmod 0 alerte)",
+      "Future work: Falco pe kernel compatibil + extindere lanțuri MITRE recunoscute",
+      "Future work: federated learning pe clustere multiple, validare externă dataset Audit",
+      "Mulțumesc coordonatorului, familiei și comisiei — întrebări?"
+    ],
+    "speakerNotes": "Recunosc trei limitări principale. Întâi, signature coupling pe ITU LHO arată că Componenta Flow nu este detector universal — exact de ce avem nevoie de Componenta Audit. A doua, dataset-ul Audit are ~23% atac, ceea ce este nereal pentru producție unde traficul benign domină masiv; pragul ar necesita recalibrare în deploy real. A treia, Componenta Syscall a fost evaluată dar Falco modern_ebpf este respins de verificator pe kernel 5.15-azure, iar kmod-ul se încarcă dar produce 0 alerte, deci rămâne future work pe un kernel compatibil. Direcții viitoare: federated learning între clustere, validare externă a dataset-ului Audit prin colaborare cu alți cercetători, și extinderea lanțurilor MITRE recunoscute. Mulțumesc coordonatorului pentru îndrumare, familiei pentru susținere și comisiei pentru atenție. Rămân deschisă întrebărilor."
+  }
+]

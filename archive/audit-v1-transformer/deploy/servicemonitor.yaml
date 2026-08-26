@@ -1,0 +1,15 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ids-service
+  namespace: runtime-ids
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ids-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s

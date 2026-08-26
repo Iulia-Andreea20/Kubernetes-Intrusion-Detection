@@ -1,0 +1,35 @@
+# syntax=docker/dockerfile:1.5
+# Container pentru Componenta Flow: XGBoost + Autoencoder hybrid
+# Acoperă: train_autoencoder.py, evaluate_autoencoder.py, hybrid_flow.py,
+# train_xgboost.py, train_trees.py, evaluate_flow.py, lho_hybrid_aligned.py
+
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+# System deps minime (pentru build wheels + git pentru dependențe edge-case)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      build-essential \
+      git \
+    && rm -rf /var/lib/apt/lists/*
+
+# PyTorch CPU-only (mult mai mic decât GPU build; suficient pentru AE-ul nostru de 31k params)
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+# Restul stack-ului
+RUN pip install --no-cache-dir \
+      xgboost==2.* \
+      lightgbm==4.* \
+      pandas==2.* \
+      numpy==1.* \
+      scikit-learn==1.* \
+      pyarrow==15.*
+
+# Nu copiem cod în imagine — codul se mount-uiește la runtime
+# (face containerul reutilizabil pentru orice script din src/model/train/flow/)
+
+CMD ["python3"]

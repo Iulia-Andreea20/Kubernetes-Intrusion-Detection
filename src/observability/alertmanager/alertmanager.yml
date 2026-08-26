@@ -1,0 +1,24 @@
+# Routes alerts to email. By default that is MailHog, so the mail can be seen at
+# http://localhost:8025 without any real credentials.
+#
+# For real mail, replace the `global` block with your SMTP settings and point `to:` at your
+# address in the receiver below.
+global:
+  smtp_smarthost: "mailhog:1025"
+  smtp_from: "ids-alert@k8s-ids.local"
+  smtp_require_tls: false
+
+route:
+  receiver: "email-soc"
+  group_by: ["alertname"]
+  group_wait: 5s
+  group_interval: 10s
+  repeat_interval: 30m
+
+receivers:
+  - name: "email-soc"
+    email_configs:
+      - to: "soc@k8s-ids.local"
+        send_resolved: true
+        headers:
+          Subject: ' IDS Kubernetes: {{ .CommonAnnotations.summary }}'

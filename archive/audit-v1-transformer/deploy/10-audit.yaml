@@ -1,0 +1,44 @@
+# Componenta AUDIT — serviciu FastAPI cu model Transformer (pod în cluster).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ids-audit
+  namespace: runtime-ids
+  labels: { app: ids-audit, component: audit }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: ids-audit }
+  template:
+    metadata:
+      labels: { app: ids-audit, component: audit }
+    spec:
+      containers:
+        - name: audit
+          image: runtime-ids:1.0
+          imagePullPolicy: IfNotPresent
+          # comanda implicită din imagine = uvicorn ids_service:app (workdir /app/runtime_ids/service)
+          ports:
+            - { containerPort: 8080, name: http }
+          readinessProbe:
+            httpGet: { path: /readyz, port: 8080 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: "1", memory: 1Gi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ids-service
+  namespace: runtime-ids
+  labels: { app: ids-audit }
+spec:
+  selector: { app: ids-audit }
+  ports:
+    - { port: 8080, targetPort: 8080, name: http }

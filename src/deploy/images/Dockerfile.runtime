@@ -1,0 +1,45 @@
+# One image for every role - audit service, flow detector, streamer - with the models baked in.
+# Build from the repository root, so the relative imports resolve the same way inside the image.
+#
+#   docker build -f src/deploy/self-managed/Dockerfile -t runtime-ids:1.0 .
+#   kind load docker-image runtime-ids:1.0 --name runtime-ids
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    KMP_DUPLICATE_LIB_OK=TRUE \
+    OMP_NUM_THREADS=2
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# CPU-only torch: the CUDA wheel is an order of magnitude larger and useless here
+RUN pip install --no-cache-dir torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
+COPY src/deploy/requirements-cluster.txt /app/req.txt
+RUN pip install --no-cache-dir -r /app/req.txt
+
+# Keep the directory layout: the relative imports depend on it
+COPY src/service/audit/      /app/src/service/audit/
+COPY src/service/flow/         /app/src/service/flow/
+COPY src/service/streamer/     /app/src/service/streamer/
+COPY src/service/correlator/   /app/src/service/correlator/
+COPY src/model/train/flow/train_autoencoder.py /app/src/model/train/flow/train_autoencoder.py
+COPY archive/2026-flow-retraining/tabular_data.py         /app/archive/2026-flow-retraining/tabular_data.py
+
+# models and the sample data
+COPY data/models/sequence_audit/      /app/data/models/sequence_audit/
+COPY data/models/sequence_audit_cloud_max/ /app/data/models/sequence_audit_cloud_max/
+COPY archive/audit-v1-kind-transformer/data/vocab.json             /app/archive/audit-v1-kind-transformer/data/vocab.json
+COPY data/models/flow-bccc/xgboost_bccc/model.json      /app/data/models/flow-bccc/xgboost_bccc/model.json
+COPY data/models/flow-bccc/autoencoder_bccc/            /app/data/models/flow-bccc/autoencoder_bccc/
+COPY data/test_holdout_sample.csv /app/data/bccc-retraining/holdout_split/test_holdout.csv
+
+EXPOSE 8080 9092
+# Defaults to the audit service; the other roles override `command` in their manifest.
+WORKDIR /app/runtime_ids/service
+CMD ["uvicorn", "ids_service:app", "--host", "0.0.0.0", "--port", "8080"]

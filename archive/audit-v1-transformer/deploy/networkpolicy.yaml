@@ -1,0 +1,41 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ids-service
+  namespace: runtime-ids
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: ids-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow scrape from monitoring namespace (Prometheus, Grafana).
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - port: 8080
+          protocol: TCP
+    # Allow detection requests from the audit-log streamer in the same ns.
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: audit-streamer
+      ports:
+        - port: 8080
+          protocol: TCP
+  egress:
+    # DNS only.
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP

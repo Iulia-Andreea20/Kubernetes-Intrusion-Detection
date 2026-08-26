@@ -1,0 +1,46 @@
+# Flow detector: XGBoost plus autoencoder over network-flow features.
+# Scores a BCCC sample baked into the image at startup and exposes Prometheus metrics. There is no
+# live traffic capture here - the flow source is offline, and the thesis says so.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ids-flow
+  namespace: runtime-ids
+  labels: { app: ids-flow, component: flow }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: ids-flow }
+  template:
+    metadata:
+      labels: { app: ids-flow, component: flow }
+    spec:
+      containers:
+        - name: flow
+          image: andreeagrigore/runtime-ids:1.1
+          imagePullPolicy: Always
+          workingDir: /app
+          command: ["python", "src/service/flow/flow_exporter.py", "--port", "9092", "--limit", "6000", "--batch", "120", "--delay", "0.5"]
+          ports:
+            - { containerPort: 9092, name: metrics }
+          env:
+            - { name: KMP_DUPLICATE_LIB_OK, value: "TRUE" }
+            - { name: OMP_NUM_THREADS, value: "2" }
+          readinessProbe:
+            httpGet: { path: /metrics, port: 9092 }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 200m, memory: 512Mi }
+            limits: { cpu: "2", memory: 2Gi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ids-flow
+  namespace: runtime-ids
+  labels: { app: ids-flow }
+spec:
+  selector: { app: ids-flow }
+  ports:
+    - { port: 9092, targetPort: 9092, name: metrics }

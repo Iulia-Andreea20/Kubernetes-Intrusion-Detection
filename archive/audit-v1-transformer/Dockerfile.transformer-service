@@ -1,0 +1,36 @@
+FROM python:3.11-slim AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY service/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Copy the inference-side code + correlator (read-only at runtime).
+COPY service/ids_service.py /app/ids_service.py
+COPY correlator/           /app/correlator/
+
+# Trained artefacts and the token vocabulary are mounted at runtime via a
+# ConfigMap/Volume; for local builds you can also copy them in.
+# COPY models/sequence_audit /app/models/sequence_audit
+# COPY data/vocab.json       /app/data/vocab.json
+
+ENV RUNTIME_IDS_MODEL_DIR=/app/models/sequence_audit \
+    RUNTIME_IDS_VOCAB_PATH=/app/data/vocab.json \
+    RUNTIME_IDS_THRESHOLD=0.5
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
+    CMD curl -fsS http://localhost:8080/healthz || exit 1
+
+USER 1000:1000
+CMD ["uvicorn", "ids_service:app", "--host", "0.0.0.0", "--port", "8080"]

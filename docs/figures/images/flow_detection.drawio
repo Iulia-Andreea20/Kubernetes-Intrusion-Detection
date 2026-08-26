@@ -1,0 +1,67 @@
+<mxfile host="app.diagrams.net" version="24.0.0">
+  <diagram id="flowdet" name="Detectie intruziune runtime">
+    <mxGraphModel dx="900" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="720" pageHeight="820" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="Detecția unei intruziuni pe flux (pipeline propus, runtime)" style="text;html=1;align=center;fontSize=15;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="120" y="5" width="480" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="traffic" value="&lt;b&gt;Trafic în clusterul Kubernetes&lt;/b&gt;&lt;br&gt;flux benign — sau — atac (scanare · DDoS · exploit CVE · exfiltrare)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#eef1f4;strokeColor=#5b6670;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="170" y="45" width="380" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="capture" value="&lt;b&gt;Captură &amp;amp; agregare în flow record&lt;/b&gt;&lt;br&gt;pachete pe interfața CNI (ex. ovn0)&lt;br&gt;→ NTLFlowLyzer / CICFlowMeter → vector de features" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#eef1f4;strokeColor=#5b6670;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="140" y="135" width="440" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="prep" value="&lt;b&gt;Preprocesare&lt;/b&gt;&lt;br&gt;drop identificatori · binarizare · protocol → IANA · curățare (AE: + StandardScaler)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#eef1f4;strokeColor=#5b6670;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="140" y="235" width="440" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="xgb" value="&lt;b&gt;XGBoost  (supervised)&lt;/b&gt;&lt;br&gt;&lt;br&gt;« seamănă cu un&lt;br&gt;atac cunoscut? »&lt;br&gt;→ probabilitate p_xgb" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#d7efea;strokeColor=#1f8a78;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="85" y="330" width="245" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="ae" value="&lt;b&gt;Autoencoder  (unsupervised)&lt;/b&gt;&lt;br&gt;&lt;br&gt;« deviază de la&lt;br&gt;traficul normal? »&lt;br&gt;→ scor p_ae (din MSE)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#fce8d2;strokeColor=#d9822b;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="390" y="330" width="245" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="fuse" value="&lt;b&gt;Fuziune (Platt)&lt;/b&gt;&lt;br&gt;score = 0,7 · p_xgb + 0,3 · p_ae" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#e9e1f4;strokeColor=#6f4fa3;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="205" y="490" width="310" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="dec" value="&lt;b&gt;score &gt; prag ?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fdf3d0;strokeColor=#b9962a;fontSize=12;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="290" y="585" width="140" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="alert" value="&lt;b&gt;ALERTĂ — INTRUZIUNE&lt;/b&gt;&lt;br&gt;→ Alert Correlator / SOC" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#fbdede;strokeColor=#c0392b;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="70" y="720" width="240" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="benign" value="&lt;b&gt;TRAFIC NORMAL&lt;/b&gt;&lt;br&gt;permis, fără alertă" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#dcefda;strokeColor=#3a8a3a;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="410" y="720" width="240" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="d1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#5b6670;strokeWidth=1.6;" edge="1" parent="1" source="traffic" target="capture">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#5b6670;strokeWidth=1.6;" edge="1" parent="1" source="capture" target="prep">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#1f8a78;strokeWidth=1.6;" edge="1" parent="1" source="prep" target="xgb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#d9822b;strokeWidth=1.6;" edge="1" parent="1" source="prep" target="ae">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d5" value="p_xgb" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#1f8a78;strokeWidth=1.6;fontColor=#1f8a78;fontStyle=2;" edge="1" parent="1" source="xgb" target="fuse">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d6" value="p_ae" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#d9822b;strokeWidth=1.6;fontColor=#d9822b;fontStyle=2;" edge="1" parent="1" source="ae" target="fuse">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#6f4fa3;strokeWidth=1.6;" edge="1" parent="1" source="fuse" target="dec">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d8" value="DA" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#c0392b;strokeWidth=1.8;fontColor=#c0392b;fontStyle=1;" edge="1" parent="1" source="dec" target="alert">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d9" value="NU" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#3a8a3a;strokeWidth=1.8;fontColor=#3a8a3a;fontStyle=1;" edge="1" parent="1" source="dec" target="benign">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

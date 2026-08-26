@@ -1,0 +1,20 @@
+# Falco: the syscall-level sensor. Versioned values rather than a helm one-liner.
+# Alerts leave as JSON over http_output and land in falco-exporter, which speaks Prometheus.
+driver:
+  kind: kmod                 # modern_ebpf is rejected by the verifier on the AKS node kernel
+                             # (5.15.0-1111-azure). kmod builds and loads, though the engine still
+                             # emits nothing there - see the report.
+tty: true
+falcosidekick:
+  enabled: false             # output goes straight to our exporter
+collectors:
+  kubernetes:
+    enabled: true            # adds pod and namespace to the output fields
+falco:
+  json_output: true
+  json_include_output_property: true
+  log_level: info
+  http_output:
+    enabled: true
+    # the exporter lives in another namespace, hence the FQDN
+    url: "http://falco-exporter.runtime-ids.svc.cluster.local:9093/falco"

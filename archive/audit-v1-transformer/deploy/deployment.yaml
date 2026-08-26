@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ids-service
+  namespace: runtime-ids
+  labels:
+    app.kubernetes.io/name: ids-service
+    app.kubernetes.io/component: audit-detector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ids-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ids-service
+        app.kubernetes.io/component: audit-detector
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8080"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ids
+          image: runtime-ids:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: ids-config
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: model
+              mountPath: /app/models/sequence_audit
+              readOnly: true
+            - name: vocab
+              mountPath: /app/data
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: model
+          configMap:
+            # In a real deployment the model is too large for a ConfigMap;
+            # use a PersistentVolumeClaim or download from object storage at
+            # init time. For the demo we expose paths and document the swap.
+            name: ids-model
+            optional: true
+        - name: vocab
+          configMap:
+            name: ids-vocab
+            optional: true
+        - name: tmp
+          emptyDir: {}

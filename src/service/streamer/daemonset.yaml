@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: audit-streamer
+  namespace: runtime-ids
+  labels:
+    app.kubernetes.io/name: audit-streamer
+    app.kubernetes.io/component: audit-streamer
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: audit-streamer
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: audit-streamer
+        app.kubernetes.io/component: audit-streamer
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "9090"
+    spec:
+      # Only schedule on control-plane nodes (audit log lives there).
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: streamer
+          image: audit-streamer:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          env:
+            - name: RUNTIME_IDS_AUDIT_LOG
+              value: "/var/log/kubernetes/audit/audit.log"
+            - name: RUNTIME_IDS_SERVICE_URL
+              value: "http://ids-service.runtime-ids.svc:80"
+            - name: RUNTIME_IDS_SEQ_LEN
+              value: "20"
+            - name: RUNTIME_IDS_LOG_LEVEL
+              value: "INFO"
+            - name: RUNTIME_IDS_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: ids-alert-webhook
+                  key: url
+                  optional: true
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: audit-log
+              mountPath: /var/log/kubernetes/audit
+              readOnly: true
+      volumes:
+        - name: audit-log
+          hostPath:
+            path: /var/log/kubernetes/audit
+            type: DirectoryOrCreate

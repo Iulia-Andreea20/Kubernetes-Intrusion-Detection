@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-ids-inference
+  namespace: ids-system
+  labels:
+    app: llm-ids-inference
+    component: inference
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: llm-ids-inference
+  template:
+    metadata:
+      labels:
+        app: llm-ids-inference
+        component: inference
+    spec:
+      containers:
+      - name: inference-service
+        image: llm-ids-inference:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        env:
+        - name: MODEL_PATH
+          value: "/app/models"
+        - name: THRESHOLD
+          valueFrom:
+            configMapKeyRef:
+              name: ids-config
+              key: threshold
+        - name: LOG_LEVEL
+          value: "INFO"
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        volumeMounts:
+        - name: model-storage
+          mountPath: /app/models
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+      volumes:
+      - name: model-storage
+        persistentVolumeClaim:
+          claimName: ids-model-pvc

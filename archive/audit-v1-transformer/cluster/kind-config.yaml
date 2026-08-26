@@ -1,0 +1,39 @@
+# kind cluster with Kubernetes API-server audit logging enabled.
+#
+# How the audit log reaches the host:
+#   apiserver pod  ->  (extraVolumes)  ->  kind node  ->  (extraMounts)  ->  host
+#   writes /var/log/kubernetes/audit/audit.log, which appears at ./audit-logs/
+#
+# Relative hostPaths in extraMounts resolve against the working directory of
+# `kind create cluster`; setup_kind.sh cd's into the workspace root first.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: runtime-ids
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: ClusterConfiguration
+        apiServer:
+          extraArgs:
+            audit-log-path: /var/log/kubernetes/audit/audit.log
+            audit-policy-file: /etc/kubernetes/audit/audit-policy.yaml
+            audit-log-maxage: "7"
+            audit-log-maxbackup: "3"
+            audit-log-maxsize: "100"
+          extraVolumes:
+            - name: audit-policy
+              hostPath: /etc/kubernetes/audit/audit-policy.yaml
+              mountPath: /etc/kubernetes/audit/audit-policy.yaml
+              readOnly: true
+              pathType: File
+            - name: audit-logs
+              hostPath: /var/log/kubernetes/audit
+              mountPath: /var/log/kubernetes/audit
+              readOnly: false
+              pathType: DirectoryOrCreate
+    extraMounts:
+      - hostPath: ./cluster/audit-policy.yaml
+        containerPath: /etc/kubernetes/audit/audit-policy.yaml
+      - hostPath: ./audit-logs
+        containerPath: /var/log/kubernetes/audit

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ids-system
+  labels:
+    name: ids-system
+    purpose: intrusion-detection

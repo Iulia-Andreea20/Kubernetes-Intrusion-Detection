@@ -1,0 +1,24 @@
+groups:
+  - name: ids-alerts
+    rules:
+      # Fires when the audit component raises a CRITICAL or HIGH alert.
+      - alert: IDSAttackDetected
+        expr: increase(runtime_ids_alerts_total{severity=~"CRITICAL|HIGH"}[1m]) > 0
+        for: 0s
+        labels:
+          severity: critical
+          component: audit
+        annotations:
+          summary: "Kubernetes API attack detected (audit component)"
+          description: "{{ $value | printf \"%.0f\" }} CRITICAL/HIGH alerts in the last minute."
+
+      # Flow component: DDoS alerts come in at MEDIUM/HIGH, so any new alert is worth firing on.
+      - alert: FlowAttackDetected
+        expr: increase(runtime_ids_flow_alerts_total[1m]) > 0
+        for: 0s
+        labels:
+          severity: warning
+          component: flow
+        annotations:
+          summary: "Malicious network traffic detected (flow component)"
+          description: "{{ $value | printf \"%.0f\" }} flow alerts in the last minute."

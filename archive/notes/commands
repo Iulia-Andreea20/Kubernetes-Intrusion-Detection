@@ -1,0 +1,34 @@
+❯ helm upgrade --install blog bitnami/wordpress \                                                                                                      ─╯
+  --set mariadb.auth.rootPassword='RootPass123!' \
+  --set mariadb.auth.password='AppDBPass123!' \
+  --set mariadb.auth.username='bn_wordpress' \
+  --set mariadb.auth.database='bitnami_wordpress' \
+  --set resources.requests.cpu=500m \
+  --set resources.requests.memory=512Mi \
+  --set resources.limits.cpu=1 \
+  --set resources.limits.memory=1Gi \
+  --set mariadb.primary.resources.requests.cpu=500m \
+  --set mariadb.primary.resources.requests.memory=512Mi \
+  --set mariadb.primary.resources.limits.cpu=1 \
+  --set mariadb.primary.resources.limits.memory=1Gi \
+  --set startupProbe.enabled=true \
+  --set startupProbe.initialDelaySeconds=15 \
+  --set startupProbe.periodSeconds=10 \
+  --set startupProbe.timeoutSeconds=10 \
+  --set startupProbe.failureThreshold=60 \
+  --set readinessProbe.initialDelaySeconds=120 \
+  --set readinessProbe.periodSeconds=10 \
+  --set readinessProbe.timeoutSeconds=10 \
+  --set readinessProbe.failureThreshold=12 \
+  --set livenessProbe.initialDelaySeconds=180 \
+  --set livenessProbe.periodSeconds=10 \
+  --set livenessProbe.timeoutSeconds=10 \
+  --set livenessProbe.failureThreshold=12
+
+  kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=blog --timeout=10m  
+
+kubectl exec -it statefulset/blog-mariadb -c mariadb -- \                                                                                            ─╯
+  mariadb-admin ping -uroot -p"$(kubectl get secret blog-mariadb -o jsonpath='{.data.mariadb-root-password}' | base64 -d)"
+
+hey -z 5m -c 40 http://localhost:8081/ -- need to run before:
+sudo tcpdump -i bridge -s0 -w /home/docker/cluster-wordpress.pcap -U

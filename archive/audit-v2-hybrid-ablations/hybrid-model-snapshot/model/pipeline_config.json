@@ -1,0 +1,63 @@
+{
+  "version": "v2.6-xgb",
+  "features": [
+    "forbid_ratio",
+    "n_forbid",
+    "n_events",
+    "n_distinct_resource",
+    "n_distinct_verb",
+    "n_distinct_ns",
+    "n_secrets",
+    "n_exec",
+    "n_rbac",
+    "n_create",
+    "n_delete",
+    "n_4xx",
+    "n_selfreview",
+    "selfreview_ratio",
+    "has_secret",
+    "has_exec",
+    "has_rbac_write",
+    "has_crb",
+    "has_forbid",
+    "secret_rate",
+    "rbac_rate",
+    "create_rate",
+    "secret_ns",
+    "severity",
+    "cum_secrets",
+    "cum_rbac_w",
+    "cum_exec",
+    "cum_crb",
+    "has_impersonation",
+    "n_distinct_impersonated"
+  ],
+  "n_features": 30,
+  "model": "XGBoost (n_estimators=200, max_depth=4, lr=0.1, scale_pos_weight=9.65)",
+  "scope": "escaladare + lateral (singurele tactici validate prin unealta externa: Stratus, Peirates)",
+  "classifier_handles": [
+    "escaladare",
+    "lateral"
+  ],
+  "excluded_from_classifier": [
+    "recon (inseparabil la nivel de metadata: AUC 0.33)",
+    "n_list (overfit densitate)",
+    "n_create_workload / has_csr / has_tokenreq (rare, semnal determinist)"
+  ],
+  "not_covered": [
+    "impact / evasion / compromised / lowslow (sintetice, FARA unealta externa -> scoase din scope)",
+    "recon (AUC 0.33)",
+    "persistence (ML esueaza, PR-AUC 0.34)"
+  ],
+  "alert_rule": "clasificator: prob>=0.50 pe >=2 ferestre (histerezis). FARA reguli, FARA allowlist.",
+  "thresholds": {
+    "prob": 0.5,
+    "K": 2
+  },
+  "train_composition": {
+    "ferestre": 5473,
+    "atac": 514,
+    "benign": 4959
+  },
+  "note": "Model PUR XGBoost (fara reguli/allowlist). Antrenat pe TOATE datele (held-out inclus) pt acoperire. Generalizarea se raporteaza din train_v2.py (held-out). Tacticile din not_covered nu mai sunt detectate de sistem."
+}

@@ -1,0 +1,49 @@
+# Bridges Falco's http_output to Prometheus. Runs the runtime-ids image with the exporter script
+# mounted from a ConfigMap.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: falco-exporter
+  namespace: runtime-ids
+  labels: { app: falco-exporter, component: runtime }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: falco-exporter }
+  template:
+    metadata:
+      labels: { app: falco-exporter, component: runtime }
+    spec:
+      containers:
+        - name: exporter
+          image: andreeagrigore/runtime-ids:1.1
+          imagePullPolicy: IfNotPresent
+          command: ["python", "/app/falco_exporter.py"]
+          ports:
+            - { containerPort: 9093, name: metrics }
+          readinessProbe:
+            httpGet: { path: /readyz, port: 9093 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          volumeMounts:
+            - name: code
+              mountPath: /app/falco_exporter.py
+              subPath: falco_exporter.py
+      volumes:
+        - name: code
+          configMap:
+            name: falco-exporter-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: falco-exporter
+  namespace: runtime-ids
+  labels: { app: falco-exporter }
+spec:
+  selector: { app: falco-exporter }
+  ports:
+    - { port: 9093, targetPort: 9093, name: metrics }

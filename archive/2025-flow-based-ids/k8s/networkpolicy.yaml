@@ -1,0 +1,49 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ids-network-policy
+  namespace: ids-system
+spec:
+  podSelector:
+    matchLabels:
+      app: llm-ids-inference
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow ingress from data collectors
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ids-system
+      podSelector:
+        matchLabels:
+          component: collector
+    ports:
+    - protocol: TCP
+      port: 8000
+  # Allow ingress from monitoring systems
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 8000
+  egress:
+  # Allow DNS
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow egress to model storage (if needed)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: ids-system
+    ports:
+    - protocol: TCP
+      port: 9000

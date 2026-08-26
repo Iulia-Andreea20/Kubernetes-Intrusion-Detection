@@ -1,0 +1,15 @@
+# Detector image: bakes the service code, the model and the config in, so what runs is a single
+# versioned artifact rather than a pod plus whatever the ConfigMap happens to hold.
+# The runtime-ids base already carries xgboost, fastapi, prometheus_client and uvicorn.
+#
+#   docker build -f src/deploy/images/Dockerfile.audit -t andreeagrigore/runtime-ids-audit:2.6 .
+#   docker push andreeagrigore/runtime-ids-audit:2.6
+FROM andreeagrigore/runtime-ids:1.1
+COPY src/service/audit/audit_xgb_service.py            /app/xgb/audit_xgb_service.py
+COPY src/model/artifacts/audit-xgb-v2.6/classifier.json  /app/xgb/classifier.json
+COPY src/model/artifacts/audit-xgb-v2.6/pipeline_config.json /app/xgb/pipeline_config.json
+ENV RUNTIME_IDS_XGB_DIR=/app/xgb \
+    RUNTIME_IDS_XGB_MODEL=/app/xgb/classifier.json \
+    RUNTIME_IDS_HYSTERESIS_K=2
+EXPOSE 8080
+CMD ["python","/app/xgb/audit_xgb_service.py"]

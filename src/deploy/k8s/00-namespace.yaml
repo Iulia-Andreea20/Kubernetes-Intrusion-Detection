@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: runtime-ids
+  labels:
+    app.kubernetes.io/part-of: runtime-ids
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    app.kubernetes.io/part-of: runtime-ids
+    kubernetes.io/metadata.name: monitoring   # pt NetworkPolicy namespaceSelector (audit-xgb permite ingress din monitoring)

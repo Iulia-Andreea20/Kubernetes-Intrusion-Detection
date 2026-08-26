@@ -1,0 +1,10 @@
+{
+  "severity": 0.5183,
+  "has_secret": 0.0601,
+  "n_distinct_verb": 0.0568,
+  "n_events": 0.0354,
+  "cum_secrets": 0.0346,
+  "secret_rate": 0.0317,
+  "n_distinct_resource": 0.0274,
+  "has_csr": 0.0259
+}

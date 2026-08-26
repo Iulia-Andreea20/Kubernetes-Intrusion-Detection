@@ -1,0 +1,47 @@
+# Feeds the detector on AKS, in place of the file-based streamer.
+# A managed control plane exposes no node to tail, so kube-audit goes to Log Analytics and this pod
+# polls it over KQL.
+#
+# Its config is created by the deploy script and is not committed:
+#   ConfigMap ids-azure-config  -> LA_WORKSPACE_ID
+#   Secret    ids-azure-sp      -> AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ids-audit-adapter
+  namespace: runtime-ids
+  labels: { app: ids-audit-adapter, component: audit }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: ids-audit-adapter }
+  template:
+    metadata:
+      labels: { app: ids-audit-adapter, component: audit }
+    spec:
+      containers:
+        - name: adapter
+          image: andreeagrigore/ids-audit-adapter:2.3
+          imagePullPolicy: Always
+          env:
+            - { name: RUNTIME_IDS_SERVICE_URL, value: "http://ids-service-xgb:8080" }
+            - { name: POLL_INTERVAL,  value: "15" }
+            - { name: LOOKBACK_MIN,   value: "10" }
+            - name: LA_WORKSPACE_ID
+              valueFrom:
+                configMapKeyRef: { name: ids-azure-config, key: LA_WORKSPACE_ID }
+            # Optional on purpose: with no secret present, DefaultAzureCredential falls back to the
+            # kubelet managed identity, which needs no secret to rotate. Either way the identity
+            # needs the Log Analytics Reader role on the workspace.
+            - name: AZURE_TENANT_ID
+              valueFrom:
+                secretKeyRef: { name: ids-azure-sp, key: AZURE_TENANT_ID, optional: true }
+            - name: AZURE_CLIENT_ID
+              valueFrom:
+                secretKeyRef: { name: ids-azure-sp, key: AZURE_CLIENT_ID, optional: true }
+            - name: AZURE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef: { name: ids-azure-sp, key: AZURE_CLIENT_SECRET, optional: true }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }

@@ -1,0 +1,12 @@
+# train
+pandas
+scikit-learn
+joblib
+dpkt
+matplotlib
+# serve
+fastapi
+uvicorn
+numpy
+ipaddress
+pathlib

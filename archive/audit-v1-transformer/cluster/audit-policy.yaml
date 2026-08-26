@@ -1,0 +1,57 @@
+# Kubernetes audit policy for the runtime-IDS dataset.
+#
+# The first matching rule wins. High-value attack surfaces (exec, RBAC,
+# secrets, token requests, pod creation) are logged at a detailed level;
+# routine controller/health traffic is dropped to keep the dataset focused.
+apiVersion: audit.k8s.io/v1
+kind: Policy
+omitStages:
+  - RequestReceived
+rules:
+  # High-value attack surfaces (always captured in full)
+
+  # Interactive access into containers (exec / attach / port-forward)
+  - level: RequestResponse
+    resources:
+      - group: ""
+        resources: ["pods/exec", "pods/attach", "pods/portforward"]
+
+  # RBAC changes — privilege escalation
+  - level: RequestResponse
+    resources:
+      - group: "rbac.authorization.k8s.io"
+        resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+
+  # Service-account token issuance — token theft / impersonation
+  - level: RequestResponse
+    resources:
+      - group: ""
+        resources: ["serviceaccounts/token"]
+
+  # Credential objects — secret / configmap access
+  - level: Request
+    resources:
+      - group: ""
+        resources: ["secrets", "configmaps", "serviceaccounts"]
+
+  # Workload lifecycle — malicious / privileged pod creation
+  - level: RequestResponse
+    resources:
+      - group: ""
+        resources: ["pods"]
+      - group: "apps"
+        resources: ["deployments", "daemonsets", "replicasets", "statefulsets"]
+
+  # Noise reduction
+
+  - level: None
+    nonResourceURLs:
+      - "/healthz*"
+      - "/readyz*"
+      - "/livez*"
+      - "/version"
+      - "/metrics"
+      - "/openapi/*"
+
+  # Everything else
+  - level: Metadata

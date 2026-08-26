@@ -1,0 +1,79 @@
+<mxfile host="65bd71144e">
+    <diagram id="auditcomp" name="Arhitectura Componenta Audit API">
+        <mxGraphModel dx="1033" dy="530" grid="1" gridSize="15" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="700" background="#FFFFFF" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" value="Componenta Audit" style="text;html=1;align=center;fontSize=15;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="90" y="12" width="620" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="input" value="&lt;b&gt;Jurnal de audit Kubernetes&lt;/b&gt; (kube-audit)&lt;br&gt;AKS managed → Azure Log Analytics" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#eef1f4;strokeColor=#5b6670;fontSize=12;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="240" y="52" width="320" height="48" as="geometry"/>
+                </mxCell>
+                <mxCell id="adapter" value="&lt;b&gt;Adapter (feed live)&lt;/b&gt;&lt;br&gt;interoghează Log Analytics" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#dbe8f5;strokeColor=#2f6da3;fontSize=11;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="240" y="120" width="320" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="prep" value="&lt;b&gt;Preprocesare&lt;/b&gt;&lt;br&gt;Standardizarea intrarilor&amp;nbsp;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#eef1f4;strokeColor=#5b6670;fontSize=12;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="210" y="196" width="380" height="52" as="geometry"/>
+                </mxCell>
+                <mxCell id="hybridbg" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#f7f9fb;strokeColor=#5b6670;dashed=1;fontSize=12;fontStyle=1;align=center;verticalAlign=top;spacingTop=6;" parent="1" vertex="1">
+                    <mxGeometry x="165" y="276" width="465" height="234" as="geometry"/>
+                </mxCell>
+                <mxCell id="clf" value="&lt;b&gt;Clasificator XGBoost&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#d7efea;strokeColor=#1f8a78;fontSize=11;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="210" y="328" width="175" height="32" as="geometry"/>
+                </mxCell>
+                <mxCell id="rules" value="&lt;b&gt;Reguli Deterministe&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#fdebd0;strokeColor=#c47f1a;fontSize=11;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="415" y="328" width="175" height="32" as="geometry"/>
+                </mxCell>
+                <mxCell id="verdict" value="&lt;b&gt;&quot;OR&quot; logic intre cele doua componente&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#e8f0e0;strokeColor=#5a7d2a;fontSize=11;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="240" y="450" width="315" height="34" as="geometry"/>
+                </mxCell>
+                <mxCell id="out" value="&lt;b&gt;Alertă de audit API&lt;/b&gt; → corelator de alerte&lt;br&gt;+ observabilitate (Prometheus / Grafana)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#e9e1f4;strokeColor=#6f4fa3;fontSize=12;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="247.5" y="536" width="300" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#5b6670;strokeWidth=1.6;" parent="1" source="input" target="adapter" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#2f6da3;strokeWidth=1.6;" parent="1" source="adapter" target="prep" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#1f8a78;strokeWidth=1.6;exitX=0.221;exitY=1.019;exitDx=0;exitDy=0;exitPerimeter=0;" parent="1" target="clf" edge="1" source="prep">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="295" y="255" as="sourcePoint"/>
+                        <Array as="points">
+                            <mxPoint x="295" y="249"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#c47f1a;strokeWidth=1.6;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" target="rules" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="503" y="248"/>
+                            <mxPoint x="503" y="300"/>
+                        </Array>
+                        <mxPoint x="503" y="255" as="sourcePoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#5a7d2a;strokeWidth=1.4;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" parent="1" source="clf" target="verdict" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="298" y="405"/>
+                            <mxPoint x="298" y="405"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#5a7d2a;strokeWidth=1.4;" parent="1" source="rules" target="verdict" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="503" y="420"/>
+                            <mxPoint x="503" y="420"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#6f4fa3;strokeWidth=1.6;" parent="1" source="verdict" target="out" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
